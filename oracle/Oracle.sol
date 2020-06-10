@@ -1,9 +1,10 @@
-pragma solidity >=0.4.24 <0.6.0;
+pragma solidity ^0.5.0;
 
 import "../address/Owner.sol";
 import "../utils/Strings.sol";
+import "./OracleInterface.sol";
 
-contract Oracle is Owner{
+contract Oracle is OracleInterface, Owner{
 
     using strings for *;
     
@@ -24,7 +25,7 @@ contract Oracle is Owner{
     }
 
     // 接收客户端请求
-    function query(address callbackAddr, string memory callbackFUN, string memory callbackParam, bytes memory queryData) public payable returns(bool) {
+    function query(address callbackAddr, string calldata callbackFUN, string calldata callbackParam, bytes calldata queryData) external payable returns(bool) {
         
         require(msg.value >= MIN_FEE, "Insufficient handling fee!");
         require(bytes(callbackFUN).length > 0, "Invalid callbackFUN!");
@@ -36,7 +37,7 @@ contract Oracle is Owner{
     }
 
     // 校验查询请求数据格式是否正确
-    function checkQueryData(bytes memory queryData) public pure returns(bool){
+    function checkQueryData(bytes memory queryData) internal pure returns(bool){
         if (queryData.length < 7) {
             return false;
         }
