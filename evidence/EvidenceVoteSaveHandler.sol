@@ -45,6 +45,11 @@ contract EvidenceVoteSaveHandler is EvidenceBaseSaveHandler, Caller {
         require(voteEvidence[_hash].owner != address(0), "Evidence not exist!");
         require(checkEvidenceExist(_hash) == false, "Evidence exist!");
         require(uint256(voteEvidence[_hash].voted).mul(100).div(callerAmount) >= threshold, "Insufficient votes!");
-        createSaveEvidence(_hash, voteEvidence[_hash].content);
+        evidence[_hash] = EvidenceObject({
+            content: voteEvidence[_hash].content,
+            owner: msg.sender,
+            timestamp: now
+        });
+        evidenceAmount++;
     }
 }
