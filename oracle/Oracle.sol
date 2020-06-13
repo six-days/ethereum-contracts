@@ -1,17 +1,15 @@
 pragma solidity ^0.5.0;
 
-import "../address/Owner.sol";
-import "../utils/Strings.sol";
+import "../access/Owner.sol";
 import "./OracleInterface.sol";
+import "../math/SafeMath.sol";
 
 contract Oracle is OracleInterface, Owner{
-
-    using strings for *;
-    
+    using SafeMath for uint
     // 执行请求最低费用
     uint public MIN_FEE = 100 szabo;
 
-    event QueryInfo(address requester, uint fee, address callbackAddr,bytes4 callbackFUN, string callbackParam, bytes queryData);
+    event QueryInfo(address requester, uint fee, address callbackAddr, string callbackFUN, bytes queryData);
 
     // 更新最低请求费用
     function setRequestFee(uint minFee) public isOwner {
@@ -25,26 +23,19 @@ contract Oracle is OracleInterface, Owner{
     }
 
     // 接收客户端请求
-    function query(address callbackAddr, string calldata callbackFUN, string calldata callbackParam, bytes calldata queryData) external payable returns(bool) {
-        
+    function query(address callbackAddr, string calldata callbackFUN, bytes calldata queryData) external payable returns(bool) {
         require(msg.value >= MIN_FEE, "Insufficient handling fee!");
         require(bytes(callbackFUN).length > 0, "Invalid callbackFUN!");
-        require(bytes(callbackParam).length > 0, "Invalid callbackParam!");
-        require(checkQueryData(queryData), "Invalid queryData!");
+        require(queryData.length > 0, "Invalid queryData!");
         // 记录日志
-        emit QueryInfo(msg.sender, msg.value, callbackAddr, bytes4(keccak256(bytes(callbackFUN))), callbackParam, queryData);
+        emit QueryInfo(msg.sender, msg.value, callbackAddr, callbackFUN, queryData);
         return true;
     }
 
-    // 校验查询请求数据格式是否正确
-    function checkQueryData(bytes memory queryData) internal pure returns(bool){
-        if (queryData.length < 7) {
-            return false;
-        }
-
-        if (!string(queryData).toSlice().startsWith("curl -X".toSlice())) {
-            return false;
-        }
-        return true;
+    // 将获取的结果发送给客户端
+    function response(address callbackAddr, string callbackFUN, uint64 stateCode, bytes respData) external isOwner returns(bool) {
+        uint callbackGas = MIN_FEE.div(tx.gasprice);
+        (bool success, bytes memory returnData) = callbackAddr.call.gas(callbackGas)(abi.encodeWithSignature(callbackFUN, stateCode, respData));
+        require(success);
     }
 }
