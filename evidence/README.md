@@ -16,14 +16,14 @@
 
 在公链的环境中，审核方一般由第三方公信机构担任，存证内容的真实性由公信机构负责审查。
 
-#二、需求分析
+# 二、需求分析
 根据上边的存证业务模型介绍，存证合约需要能够满足以下需求。
 1. 只有存证方能够发起存证内容上链
 2. 链上的存证数据应该包含存证内容和内容的所有者
 3. 可以对已上链的存证进行检索
 4. 审核方需要对待上链的存证投票，投票数满足一定条件后存证才能上链
 
-#三、合约设计
+# 三、合约设计
 ## 1.0版
 基于需求分析，我们根据最小可使用原则，设计第一版存证合约框架，如下图所示。
 
@@ -47,7 +47,7 @@
 > 说明：合约架构图中的各个层级只列出了该层级的核心功能点。
 
 
-#四、 存证合约实现
+# 四、 存证合约实现
 接下来会详细讲解存证合约的实现。完整实现代码可访问：[https://github.com/six-days/ethereum-contracts/tree/master/evidence](https://github.com/six-days/ethereum-contracts/tree/master/evidence)
 
 ## 1、数据层
@@ -69,7 +69,7 @@ contract EvidenceData {
 存证数据的相关变量都被定义为`internal`类型，限制为只能合约内部访问。
 
 ## 2、逻辑层
-###2.1 无审核方审核的逻辑实现
+### 2.1 无审核方审核的逻辑实现
 ```
 contract EvidenceBaseSaveHandler is Ownable, EvidenceData {
     
@@ -113,7 +113,7 @@ contract EvidenceBaseSaveHandler is Ownable, EvidenceData {
 - 之所以需要有`initialize`方法来为权限合约的owner赋值，是因为代理合约在代理逻辑合约之后，逻辑合约自身通过构造函数初始化的值是无法获取到的，因此需要有一个方法能够为初始参数赋值。
 - `createSaveEvidence`创建存证合约时，参数`_hash`为 `_content`的hash。如果存证的内容本身就是一个文件的hash值，那么参数`_hash`相当于是hash的hash。
 
-###2.2 有审核方审核的逻辑实现
+### 2.2 有审核方审核的逻辑实现
 
 ```
 contract EvidenceVoteSaveHandler is EvidenceBaseSaveHandler, Caller {
@@ -158,7 +158,12 @@ contract EvidenceVoteSaveHandler is EvidenceBaseSaveHandler, Caller {
         require(voteEvidence[_hash].owner != address(0), "Evidence not exist!");
         require(checkEvidenceExist(_hash) == false, "Evidence exist!");
         require(uint256(voteEvidence[_hash].voted).mul(100).div(callerAmount) >= threshold, "Insufficient votes!");
-        createSaveEvidence(_hash, voteEvidence[_hash].content);
+        evidence[_hash] = EvidenceObject({
+            content: voteEvidence[_hash].content,
+            owner: msg.sender,
+            timestamp: now
+        });
+        evidenceAmount++;
     }
 }
 ```
@@ -203,7 +208,7 @@ contract Proxy {
 }
 ```
 
-#五、合约部署
+# 五、合约部署
 ## 1、合约部署
 1. 先部署控制层的代理合约`OwnedUpgradeabilityProxy`
 2. 部署无审核方的逻辑层合约`EvidenceBaseSaveHandler`
