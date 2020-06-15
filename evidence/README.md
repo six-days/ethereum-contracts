@@ -16,24 +16,26 @@
 
 在公链的环境中，审核方一般由第三方公信机构担任，存证内容的真实性由公信机构负责审查。
 
-#二、需求分析
+# 二、需求分析
 根据上边的存证业务模型介绍，存证合约需要能够满足以下需求。
 1. 只有存证方能够发起存证内容上链
 2. 链上的存证数据应该包含存证内容和内容的所有者
 3. 可以对已上链的存证进行检索
 4. 审核方需要对待上链的存证投票，投票数满足一定条件后存证才能上链
 
-#三、合约设计
+# 三、合约设计
 ## 1.0版
 基于需求分析，我们根据最小可使用原则，设计第一版存证合约框架，如下图所示。
 
 ![存证合约架构1.0](https://upload-images.jianshu.io/upload_images/1797455-c2ba9fad7fbb301a.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
 在存证合约架构1.0版本中，只需要两个合约，一个用于权限控制的`Owner`合约，一个用于存证业务的`Evidence`合约。如果说存证合约任何用户都能够调用，进行存证内容上链，权限控制都可以不需要。
 
 ## 2.0版
 在第二版中，我们采用了类似MVC结构，将数据和逻辑分离，并且引入控制层。
 
 对存证的所有请求，都通过控制层进行转发，控制层将请求通过代理转发给逻辑层，逻辑层按照业务逻辑处理后通过数据层进行数据上链。架构图如下图所示。
+
 ![存证合约架构2.0](https://upload-images.jianshu.io/upload_images/1797455-eae06b4650c503bf.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
 
@@ -42,12 +44,13 @@
 3.0版本与2.0版本在架构上是一致的，核心区别在逻辑层。3.0版本在逻辑层增加了存证审核方的业务逻辑。
 
 由于采用了控制层的代理结构，对于业务逻辑升级时，只需要部署新的业务逻辑，然后将新合约的地址注册到代理合约中，即可完成合约升级，并且对外提供服务的合约地址不变。
+
 ![存证合约架构3.0](https://upload-images.jianshu.io/upload_images/1797455-554a6a7231c3b1ad.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
 > 说明：合约架构图中的各个层级只列出了该层级的核心功能点。
 
 
-#四、 存证合约实现
+# 四、 存证合约实现
 接下来会详细讲解存证合约的实现。完整实现代码可访问：[https://github.com/six-days/ethereum-contracts/tree/master/evidence](https://github.com/six-days/ethereum-contracts/tree/master/evidence)
 
 ## 1、数据层
@@ -69,7 +72,7 @@ contract EvidenceData {
 存证数据的相关变量都被定义为`internal`类型，限制为只能合约内部访问。
 
 ## 2、逻辑层
-###2.1 无审核方审核的逻辑实现
+### 2.1 无审核方审核的逻辑实现
 ```
 contract EvidenceBaseSaveHandler is Ownable, EvidenceData {
     
@@ -113,7 +116,7 @@ contract EvidenceBaseSaveHandler is Ownable, EvidenceData {
 - 之所以需要有`initialize`方法来为权限合约的owner赋值，是因为代理合约在代理逻辑合约之后，逻辑合约自身通过构造函数初始化的值是无法获取到的，因此需要有一个方法能够为初始参数赋值。
 - `createSaveEvidence`创建存证合约时，参数`_hash`为 `_content`的hash。如果存证的内容本身就是一个文件的hash值，那么参数`_hash`相当于是hash的hash。
 
-###2.2 有审核方审核的逻辑实现
+### 2.2 有审核方审核的逻辑实现
 
 ```
 contract EvidenceVoteSaveHandler is EvidenceBaseSaveHandler, Caller {
@@ -158,7 +161,12 @@ contract EvidenceVoteSaveHandler is EvidenceBaseSaveHandler, Caller {
         require(voteEvidence[_hash].owner != address(0), "Evidence not exist!");
         require(checkEvidenceExist(_hash) == false, "Evidence exist!");
         require(uint256(voteEvidence[_hash].voted).mul(100).div(callerAmount) >= threshold, "Insufficient votes!");
-        createSaveEvidence(_hash, voteEvidence[_hash].content);
+        evidence[_hash] = EvidenceObject({
+            content: voteEvidence[_hash].content,
+            owner: msg.sender,
+            timestamp: now
+        });
+        evidenceAmount++;
     }
 }
 ```
@@ -203,7 +211,7 @@ contract Proxy {
 }
 ```
 
-#五、合约部署
+# 五、合约部署
 ## 1、合约部署
 1. 先部署控制层的代理合约`OwnedUpgradeabilityProxy`
 2. 部署无审核方的逻辑层合约`EvidenceBaseSaveHandler`
