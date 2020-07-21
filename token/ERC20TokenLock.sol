@@ -1,10 +1,10 @@
 pragma solidity ^0.5.0;
 
 import "../math/SafeMath.sol";
-import "../access/Ownable.sol";
+import "../access/Owner.sol";
 import "./TokenHandler.sol";
 
-contract ERC20TokenLock is Ownable,TokenHandler {
+contract ERC20TokenLock is Owner,TokenHandler {
     using SafeMath for uint256;
 
     uint256 constant MIN_AMOUNT   = 100 ether; // 最小的锁仓数量，Token精度与以太币一致为18
@@ -50,7 +50,7 @@ contract ERC20TokenLock is Ownable,TokenHandler {
      * 锁仓记录
      * 最低100DNA，锁仓期1-5年
      */
-    function deposit(address _hold, uint256 _amount) onlyOwner public {
+    function deposit(address _hold, uint256 _amount) isOwner public {
         require(_amount >= MIN_AMOUNT, "less than the minimum token!");
         uint256 rlen = records[_hold].length;
         records[_hold].push(Record({
@@ -91,7 +91,7 @@ contract ERC20TokenLock is Ownable,TokenHandler {
     /*
      * 管理员触发，锁仓到期后返回给用户
      */
-    function getBackByOwner(address _hold, uint256 _index) onlyOwner public returns(bool) {
+    function getBackByOwner(address _hold, uint256 _index) isOwner public returns(bool) {
         return release(_hold, uint256(_index));
     }
 
@@ -124,7 +124,7 @@ contract ERC20TokenLock is Ownable,TokenHandler {
 
     
     // 提取合约中的以太币
-    function drain(address payable _address) payable onlyOwner external {
+    function drain(address payable _address) payable isOwner external {
         _address.transfer(address(this).balance);
     }
     
