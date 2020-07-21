@@ -1,13 +1,13 @@
 pragma solidity ^0.5.0;
 
 import "../math/SafeMath.sol";
-import "../access/Ownable.sol";
+import "../access/Owner.sol";
 
 /**
  * @title Pausable
  * @dev Base contract which allows children to implement an emergency stop mechanism.
  */
-contract Pausable is Ownable {
+contract Pausable is Owner {
   event Pause();
   event Unpause();
 
@@ -33,7 +33,7 @@ contract Pausable is Ownable {
   /**
    * @dev called by the owner to pause, triggers stopped state
    */
-  function pause() onlyOwner whenNotPaused public {
+  function pause() isOwner whenNotPaused public {
     paused = true;
     emit Pause();
   }
@@ -41,7 +41,7 @@ contract Pausable is Ownable {
   /**
    * @dev called by the owner to unpause, returns to normal state
    */
-  function unpause() onlyOwner whenPaused public {
+  function unpause() isOwner whenPaused public {
     paused = false;
     emit Unpause();
   }
@@ -122,7 +122,7 @@ contract SDToken is StandardToken, Pausable {
       * previous lock time has expired.
       * @param _value The amount be locked.
       */
-    function lockBalance(address addr, uint256 _value,uint256 lockingDays) external onlyOwner {
+    function lockBalance(address addr, uint256 _value,uint256 lockingDays) external isOwner {
 
         // Check if the lock on previously locked tokens is still active.
         if (balanceLocks[addr].unlockDate > block.timestamp) {
